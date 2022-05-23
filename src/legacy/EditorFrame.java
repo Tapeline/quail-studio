@@ -4,8 +4,6 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 import me.tapeline.quailstudio.forms.EditorView;
 import me.tapeline.quailstudio.forms.IDEHelp;
 import me.tapeline.quailstudio.forms.Preferences;
-import me.tapeline.quailstudio.project.Project;
-import me.tapeline.quailstudio.project.ProjectFile;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rsyntaxtextarea.SyntaxScheme;
@@ -27,16 +25,16 @@ import java.util.List;
 public class EditorFrame extends JFrame {
 
     public EditorView view;
-    public Project project;
+    public HashMap<String, RTextScrollPane> codeTabList = new HashMap<>();
 
     public EditorFrame(File file) {
         super("quail::studio");
         view = new EditorView();
-        view.path.setText(file.getAbsolutePath());
         setContentPane(view.main);
         setPreferredSize(new Dimension(900, 600));
-
-        openProject(file.getParentFile());
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        view.path.setText(file.getAbsolutePath());
+        loadDir(file.getParentFile());
         view.btnCfg.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -73,16 +71,16 @@ public class EditorFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (view.codeTabs.getComponents().length > 1) {
-                    if (view.codeTabs.getComponents().length > 1) {
-                        RTextScrollPane selected = (RTextScrollPane) view.codeTabs.getSelectedComponent();
-                        for (ProjectFile file : project.loadedFiles) {
-                            if (file.pane == selected) {
-                                file.save();
-                                file.isOpened = false;
-                                view.codeTabs.remove(selected);
-                            }
-                        }
-                    }
+                    final String[] path = new String[1];
+                    int selectedHash = view.codeTabs.getSelectedComponent().hashCode();
+                    codeTabList.forEach((k, v) -> {
+                        if (v.hashCode() == selectedHash)
+                            path[0] = v.getTextArea().getName();
+                    });
+                    IOManager.fileSet(path[0],
+                            ((RTextScrollPane) view.codeTabs.getSelectedComponent()).getTextArea().getText());
+                    codeTabList.remove(path[0]);
+                    view.codeTabs.remove(view.codeTabs.getSelectedComponent());
                 }
             }
         });
@@ -103,7 +101,7 @@ public class EditorFrame extends JFrame {
                 int result = fileChooser.showOpenDialog(Main.frames.get("editor"));
                 if (result == JFileChooser.APPROVE_OPTION) {
                     IOManager.fileSet(fileChooser.getSelectedFile().getAbsolutePath(), "");
-                    project.reload();
+                    openFile(fileChooser.getSelectedFile());
                 }
             }
         });
@@ -124,28 +122,44 @@ public class EditorFrame extends JFrame {
                 int result = fileChooser.showOpenDialog(Main.frames.get("editor"));
                 if (result == JFileChooser.APPROVE_OPTION) {
                     IOManager.fileSet(fileChooser.getSelectedFile().getAbsolutePath(), "");
-                    project.reload();
+                    openFile(fileChooser.getSelectedFile());
                 }
             }
         });
         fileMenuNew.add(fileNewQuail);
-        JMenuItem fileNewFolder = new JMenuItem("New Project");
+        JMenuItem fileNewFolder = new JMenuItem("New Folder");
         fileNewFolder.setIcon(new ImageIcon(Main.iconFolderNew));
         fileNewFolder.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Create project");
+                fileChooser.setDialogTitle("Create folder");
                 fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
                 int result = fileChooser.showOpenDialog(Main.frames.get("editor"));
-                if (result == JFileChooser.APPROVE_OPTION)
+                if (result == JFileChooser.APPROVE_OPTION) {
                     fileChooser.getSelectedFile().mkdirs();
+                }
             }
         });
         fileMenuNew.add(fileNewFolder);
         fileMenu.add(fileMenuNew);
-        JMenuItem folderOpen = new JMenuItem("Open project...");
+        JMenuItem fileOpen = new JMenuItem("Open file...");
+        fileOpen.setIcon(new ImageIcon(Main.iconOpenFile));
+        fileOpen.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Open Quail file");
+                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                int result = fileChooser.showOpenDialog(Main.frames.get("editor"));
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    openFile(fileChooser.getSelectedFile());
+                }
+            }
+        });
+        fileMenu.add(fileOpen);
+        JMenuItem folderOpen = new JMenuItem("Open folder...");
         folderOpen.setIcon(new ImageIcon(Main.iconOpenFolder));
         folderOpen.addActionListener(new ActionListener() {
             @Override
@@ -155,7 +169,7 @@ public class EditorFrame extends JFrame {
                 fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
                 int result = fileChooser.showOpenDialog(Main.frames.get("editor"));
                 if (result == JFileChooser.APPROVE_OPTION) {
-                    openProject(fileChooser.getSelectedFile());
+                    loadDir(fileChooser.getSelectedFile());
                 }
             }
         });
@@ -164,7 +178,9 @@ public class EditorFrame extends JFrame {
         fileSaveAll.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                project.save();
+                codeTabList.forEach((path, pane) -> {
+                    IOManager.fileSet(path, pane.getTextArea().getText());
+                });
             }
         });
         fileMenu.add(fileSaveAll);
@@ -185,7 +201,9 @@ public class EditorFrame extends JFrame {
         fileExit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                project.save();
+                codeTabList.forEach((path, pane) -> {
+                    IOManager.fileSet(path, pane.getTextArea().getText());
+                });
                 Main.frames.forEach((k, frame) -> {
                     frame.dispose();
                 });
@@ -229,7 +247,9 @@ public class EditorFrame extends JFrame {
         Action ctrlS = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                project.save();
+                codeTabList.forEach((path, pane) -> {
+                    IOManager.fileSet(path, pane.getTextArea().getText());
+                });
             }
         };
         iMap.put(KeyStroke.getKeyStroke('S', InputEvent.CTRL_DOWN_MASK), "Control-S-Save-All");
@@ -238,14 +258,11 @@ public class EditorFrame extends JFrame {
 
     public void openFile(File file) {
         if (file == null) return;
-        String name = file.getAbsolutePath();
-        ProjectFile projectFile = project.get(file);
-        if (projectFile == null) return;
-        if (projectFile.isOpened) {
-            view.codeTabs.setSelectedComponent(projectFile.pane);
+        String name = file.getAbsolutePath().toString();
+        if (codeTabList.containsKey(name)) {
+            view.codeTabs.setSelectedComponent(codeTabList.get(name));
             return;
         }
-
         RSyntaxTextArea area = new RSyntaxTextArea();
         area.setSyntaxEditingStyle("text/quail");
         area.setBackground(Color.DARK_GRAY);
@@ -267,6 +284,16 @@ public class EditorFrame extends JFrame {
         RTextScrollPane s = new RTextScrollPane(area);
         s.getGutter().setBookmarkingEnabled(true);
         s.getGutter().setBookmarkIcon(new ImageIcon(Main.iconFile));
+        area.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {}
+            @Override
+            public void removeUpdate(DocumentEvent e) {}
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+
+            }
+        });
         InputMap iMap = area.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap aMap = area.getActionMap();
         Action ctrlSpace = new AbstractAction() {
@@ -292,9 +319,8 @@ public class EditorFrame extends JFrame {
         iMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK),
                 "Control-Space");
         aMap.put("Control-Space", ctrlSpace);
-        projectFile.pane = s;
-        projectFile.isOpened = true;
-        view.codeTabs.addTab(projectFile.file.getName(), projectFile.pane);
+        codeTabList.put(name, s);
+        view.codeTabs.addTab(file.getName(), codeTabList.get(name));
     }
 
     public static String getLastWord(String s) {
@@ -307,8 +333,7 @@ public class EditorFrame extends JFrame {
         return s.substring(s.length() - size);
     }
 
-    public void openProject(File dir) {
-        project = Project.open(dir);
+    public void loadDir(File dir) {
         FileSystemModel fileSystemModel = new FileSystemModel(dir);
         view.fileTree.setModel(fileSystemModel);
         view.fileTree.setEditable(true);
@@ -318,13 +343,6 @@ public class EditorFrame extends JFrame {
                 openFile(file);
             }
         });
-        if (project.isSingleFile()) {
-            openFile(dir);
-        } else {
-            for (ProjectFile file : project.loadedFiles) {
-                openFile(file.file);
-            }
-        }
     }
 
 }

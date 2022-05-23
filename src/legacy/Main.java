@@ -47,9 +47,8 @@ public class Main {
 
     public static void reloadCfg() {
         if (frames.containsKey("editor"))
-            ((EditorFrame) frames.get("editor")).project.loadedFiles.forEach((v) -> {
-                v.pane.getTextArea().setFont(
-                        new Font("Noto Mono", Font.PLAIN, ((int) cfg.cfg.get("font-size"))));
+            ((EditorFrame) frames.get("editor")).codeTabList.forEach((k, v) -> {
+                v.getTextArea().setFont(new Font("Noto Mono", Font.PLAIN, ((int) cfg.cfg.get("font-size"))));
             });
     }
 
@@ -118,6 +117,14 @@ public class Main {
         frames.get("welcome").pack();
         frames.get("welcome").setVisible(true);
         frames.get("welcome").setIconImage(appIcon);
+
+        while (true) {
+            AtomicBoolean cont = new AtomicBoolean(false);
+            frames.forEach((k, v) -> {
+                if (v.isShowing()) cont.set(true);
+            });
+            if (!cont.get()) break;
+        }
 
         cfg.saveConfig();
         System.out.println("Bye");
