@@ -1,5 +1,7 @@
 package me.tapeline.quailstudio.forms;
 
+import me.tapeline.quailstudio.contextmenus.FileContext;
+import me.tapeline.quailstudio.contextmenus.FileContextPopup;
 import me.tapeline.quailstudio.project.CodeEditor;
 import me.tapeline.quailstudio.Main;
 import me.tapeline.quailstudio.customui.IconTreeNodeRenderer;
@@ -18,7 +20,9 @@ import org.apache.commons.io.FileUtils;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -28,7 +32,7 @@ public class EditorForm extends JFrame {
     public JTextArea consoleArea;
     private JButton consoleRunBtn;
     private JButton consolePreferencesBtn;
-    private JTree fsTree;
+    public JTree fsTree;
     private JButton toolbarRunBtn;
     private JLabel pathLabel;
     private JPanel root;
@@ -149,6 +153,7 @@ public class EditorForm extends JFrame {
             }
         });
 
+        fsTree.setComponentPopupMenu(new FileContextPopup(this, project.root));
         fsTree.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -186,6 +191,13 @@ public class EditorForm extends JFrame {
                                 new CodeEditor(that, f));
                     }
                     pathBreadCrumb.renewCrumbs(f);
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    TreePath pathForLocation = fsTree.getPathForLocation(e.getPoint().x, e.getPoint().y);
+                    if (pathForLocation != null) {
+                        FileTreeNode ftn = (FileTreeNode) pathForLocation.getLastPathComponent();
+                        ((FileContextPopup) fsTree.getComponentPopupMenu()).parent = ftn.file;
+                    }
+                    super.mousePressed(e);
                 }
             }
         });
@@ -222,122 +234,7 @@ public class EditorForm extends JFrame {
     
     public void setupMenuBar(EditorForm that) {
         JMenuBar menuBar = new JMenuBar();
-        JMenu fileMenu = new JMenu("File");
-        JMenu fileMenuNew = new JMenu("New");
-        fileMenuNew.setIcon(new ImageIcon(Icons.iconFile));
-        JMenuItem fileNewPlain = new JMenuItem("New Plain File");
-        fileNewPlain.setIcon(new ImageIcon(Icons.iconFile));
-        fileNewPlain.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Create Plain file");
-                fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                int result = fileChooser.showOpenDialog(that);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    try {
-                        FileUtils.writeStringToFile(fileChooser.getSelectedFile(), "", "UTF-8");
-                    } catch (IOException exception) {
-                        JOptionPane.showMessageDialog(that,
-                                "quail::studio failed create file",
-                                "File Fail",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                    project.resolveFiles();
-                    fsTree.setModel(new DefaultTreeModel(project.fileSystem.toTree()));
-                }
-            }
-        });
-        fileMenuNew.add(fileNewPlain);
-        JMenuItem fileNewQuail = new JMenuItem("New Quail file");
-        fileNewQuail.setIcon(new ImageIcon(Icons.iconQFile));
-        fileNewQuail.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Create Quail file");
-                fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
-                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                int result = fileChooser.showOpenDialog(that);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    try {
-                        FileUtils.writeStringToFile(fileChooser.getSelectedFile(), "", "UTF-8");
-                    } catch (IOException exception) {
-                        JOptionPane.showMessageDialog(that,
-                                "quail::studio failed create file",
-                                "File Fail",
-                                JOptionPane.ERROR_MESSAGE);
-                    }
-                    project.resolveFiles();
-                    fsTree.setModel(new DefaultTreeModel(project.fileSystem.toTree()));
-                }
-            }
-        });
-        fileMenuNew.add(fileNewQuail);
-        JMenuItem fileNewFolder = new JMenuItem("New Project");
-        fileNewFolder.setIcon(new ImageIcon(Icons.iconFolderNew));
-        fileNewFolder.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                File projectRoot = NewProjectWizard.dialog();
-                if (projectRoot == null) return;
-                projectRoot.mkdirs();
-                Main.editors.add(new EditorForm(projectRoot));
-            }
-        });
-        fileMenuNew.add(fileNewFolder);
-        fileMenu.add(fileMenuNew);
-        JMenuItem folderOpen = new JMenuItem("Open project...");
-        folderOpen.setIcon(new ImageIcon(Icons.iconOpenFolder));
-        folderOpen.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Open folder");
-                fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                int result = fileChooser.showOpenDialog(that);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    Main.editors.add(new EditorForm(fileChooser.getSelectedFile()));
-                }
-            }
-        });
-        fileMenu.add(folderOpen);
-        JMenuItem fileSaveAll = new JMenuItem("Save All");
-        fileSaveAll.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                saveAll();
-            }
-        });
-        fileMenu.add(fileSaveAll);
-        fileMenu.addSeparator();
-        JMenuItem filePref = new JMenuItem("Preferences...");
-        filePref.setIcon(new ImageIcon(Icons.iconWrench));
-        filePref.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Preferences dialog = new Preferences();
-                dialog.pack();
-                dialog.setVisible(true);
-            }
-        });
-        fileMenu.add(filePref);
-        fileMenu.addSeparator();
-        JMenuItem fileExit = new JMenuItem("Quit");
-        fileExit.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                Main.editors.forEach((editor) -> {
-                    if (editor == that) return;
-                    saveAll();
-                    editor.dispose();
-                });
-                saveAll();
-                that.dispose();
-            }
-        });
-        fileMenu.add(fileExit);
+        JMenu fileMenu = new FileContext(this, project.root);
 
         JMenu runMenu = new JMenu("Run");
         JMenuItem runRun = new JMenuItem("Run Current");

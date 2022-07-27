@@ -24,6 +24,7 @@ public class Tokenizer extends AbstractTokenMaker {
         map.put("staticmethod", Token.RESERVED_WORD);
         map.put("class", Token.RESERVED_WORD);
         map.put("metacontainer", Token.RESERVED_WORD);
+        map.put("container", Token.RESERVED_WORD);
         map.put("like", Token.RESERVED_WORD);
         map.put("string", Token.RESERVED_WORD);
         map.put("list", Token.RESERVED_WORD);
@@ -36,7 +37,7 @@ public class Tokenizer extends AbstractTokenMaker {
         map.put("every", Token.RESERVED_WORD);
         map.put("through", Token.RESERVED_WORD);
         map.put("try", Token.RESERVED_WORD);
-        map.put("catch as", Token.RESERVED_WORD);
+        map.put("catch", Token.RESERVED_WORD);
         map.put("while", Token.RESERVED_WORD);
         map.put("loop", Token.RESERVED_WORD);
         map.put("stop when", Token.RESERVED_WORD);
@@ -44,6 +45,12 @@ public class Tokenizer extends AbstractTokenMaker {
         map.put("override", Token.RESERVED_WORD);
         map.put("on", Token.RESERVED_WORD);
         map.put("object", Token.RESERVED_WORD);
+        map.put("static", Token.RESERVED_WORD);
+        map.put("final", Token.RESERVED_WORD);
+        map.put("require", Token.RESERVED_WORD);
+        map.put("anyof", Token.RESERVED_WORD);
+        map.put("object<", Token.RESERVED_WORD);
+        map.put("as", Token.RESERVED_WORD);
 
         map.put("+", Token.OPERATOR);
         map.put("/", Token.OPERATOR);
@@ -115,6 +122,7 @@ public class Tokenizer extends AbstractTokenMaker {
         map.put("return", Token.RESERVED_WORD_2);
         map.put("breakpoint", Token.RESERVED_WORD_2);
         map.put("memory", Token.RESERVED_WORD_2);
+        map.put("strike", Token.RESERVED_WORD_2);
         map.put("break", Token.RESERVED_WORD_2);
         map.put("continue", Token.RESERVED_WORD_2);
         return map;

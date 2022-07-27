@@ -3,4 +3,4 @@ quail-name: QuailReforged.jar
 quail-home: runtime
 run-cmd: java -jar %home/%name false %file
 theme: dark
-last-projects: [/home/tapeline/QuailProjects/GuiTest, /home/tapeline/QuailProjects/GuiTest]
+last-projects: [/home/tapeline/QuailProjects/GuiTest, /home/tapeline/QuailProjects/Playground]
